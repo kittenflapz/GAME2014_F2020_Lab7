@@ -10,66 +10,95 @@ public class PlayerBehaviour : MonoBehaviour
     public float horizontalForce;
     public float verticalForce;
     public bool isGrounded;
+    public bool isCrouching;
+    public bool isJumping;
     public Transform SpawnPoint;
 
-    private Rigidbody2D m_rigidbody2D;
-    private SpriteRenderer m_spireRenderer;
+    private Rigidbody2D m_rigidBody2D;
+    private SpriteRenderer m_spriteRenderer;
     private Animator m_animator;
 
     // Start is called before the first frame update
     void Start()
     {
-        m_rigidbody2D = GetComponent<Rigidbody2D>();
-        m_spireRenderer = GetComponent<SpriteRenderer>();
+        m_rigidBody2D = GetComponent<Rigidbody2D>();
+        m_spriteRenderer = GetComponent<SpriteRenderer>();
         m_animator = GetComponent<Animator>();
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         _Move();
     }
 
     void _Move()
     {
-       
-            if (joystick.Horizontal > joystickHorizontalSensitivity)
+        if (isGrounded)
+        {
+            if (!isJumping && !isCrouching)
             {
-                m_spireRenderer.flipX = false;
-                m_rigidbody2D.AddForce(Vector2.right * horizontalForce * Time.deltaTime);
-                m_animator.SetInteger("AnimState", 1);
+                if (joystick.Horizontal > joystickHorizontalSensitivity)
+                {
+                    // move right
+                    m_rigidBody2D.AddForce(Vector2.right * horizontalForce );
+                    m_spriteRenderer.flipX = false;
+                    m_animator.SetInteger("AnimState", (int)PlayerAnimationType.RUN);
+                }
+                else if (joystick.Horizontal < -joystickHorizontalSensitivity)
+                {
+                    // move left
+                    m_rigidBody2D.AddForce(Vector2.left * horizontalForce );
+                    m_spriteRenderer.flipX = true;
+                    m_animator.SetInteger("AnimState", (int)PlayerAnimationType.RUN);
+                }
+                else
+                {
+                    m_animator.SetInteger("AnimState", (int)PlayerAnimationType.IDLE);
+                }
             }
-            else if (joystick.Horizontal < -joystickHorizontalSensitivity)
+
+
+            if ((joystick.Vertical > joystickVerticalSensitivity) && (!isJumping))
             {
-                m_rigidbody2D.AddForce(Vector2.left * horizontalForce * Time.deltaTime);
-                m_spireRenderer.flipX = true;
-                m_animator.SetInteger("AnimState", 1);
-            }
-            else if (joystick.Vertical > joystickVerticalSensitivity)
-            {
-                    if (isGrounded)
-                    {
-                        m_rigidbody2D.AddForce(Vector2.up * verticalForce * Time.deltaTime);
-                        m_animator.SetInteger("AnimState", 2);
-                    }
+                // jump
+                m_rigidBody2D.AddForce(Vector2.up * verticalForce);
+                m_animator.SetInteger("AnimState", (int)PlayerAnimationType.JUMP);
+                isJumping = true;
             }
             else
-             {
-                    
-                   // idle
-                   m_animator.SetInteger("AnimState", 0);
-                
-             }
+            {
+                isJumping = false;
+            }
+
+            if ((joystick.Vertical < -joystickVerticalSensitivity) && (!isJumping))
+            {
+                // crouch
+                m_animator.SetInteger("AnimState", (int)PlayerAnimationType.CROUCH);
+                isCrouching = true;
+            }
+            else
+            {
+                isCrouching = false;
+            }
+        }
+
     }
 
-    private void OnCollisionEnter2D(Collision2D other)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        isGrounded = true;
+        if (collision.gameObject.CompareTag("Platforms"))
+        {
+            isGrounded = true;
+        }
     }
 
-    private void OnCollisionExit2D(Collision2D other)
+    private void OnCollisionExit2D(Collision2D collision)
     {
-        isGrounded = false;
+        if (collision.gameObject.CompareTag("Platforms"))
+        {
+            isGrounded = false;
+        }
     }
 
     private void OnTriggerEnter2D(Collider2D other)
